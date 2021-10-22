@@ -1,3 +1,32 @@
+/*
+ *  EC-Access-Tool Copyright(C) 2021, File Modified by: Shubham Paul under GPLv3
+ *
+ *	This program is free software : you can redistribute it and /or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.If not, see < https://www.gnu.org/licenses/>.
+ */
+
+/*
+ *  The code to interface with RwDrv.sys is part of https://github.com/Cr4sh/fwexpl which is released under GPLv3.
+ */
+
+ //-----------------------------------------------------------------------------
+ //     Modified by : Soberia
+ //        Web	    : https://github.com/Soberia
+ //    License      : The modified BSD license
+ // 
+ //    Copyright(C) 2021
+ //-----------------------------------------------------------------------------
+
 //-----------------------------------------------------------------------------
 //     Author : hiyohiyo
 //       Mail : hiyohiyo@crystalmark.info
@@ -14,50 +43,53 @@
 
 #include "driver.hpp"
 
-BOOL DriverManager::manage(LPCTSTR DriverId, LPCTSTR DriverPath, USHORT Function)
-{
+DriverManager::DriverManager(LPCTSTR DriverId) 
+	: gHandle(INVALID_HANDLE_VALUE)
+	, DriverId(DriverId)
+{}
+
+BOOL DriverManager::manage(LPCTSTR DriverPath, USHORT Function) {
 	BOOL rCode = FALSE;
 	DWORD error = NO_ERROR;
 	SC_HANDLE hService = NULL;
 	SC_HANDLE hSCManager = NULL;
 
-	if (DriverId == NULL || DriverPath == NULL)
+	if (DriverId == NULL || DriverPath == NULL) {
 		return FALSE;
+	}
 
 	hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-	if (hSCManager == NULL)
+	if (hSCManager == NULL) {
 		return FALSE;
+	}
 
-	switch (Function)
-	{
+	switch (Function) {
 	case OLS_DRIVER_INSTALL:
-		if (installDriver(hSCManager, DriverId, DriverPath))
-			rCode = startDriver(hSCManager, DriverId);
+		if (installDriver(hSCManager, DriverPath)) {
+			rCode = startDriver(hSCManager);
+		}
 		break;
 	case OLS_DRIVER_REMOVE:
-		if (!isSystemInstallDriver(hSCManager, DriverId, DriverPath))
-		{
-			stopDriver(hSCManager, DriverId);
-			rCode = removeDriver(hSCManager, DriverId);
+		if (!isSystemInstallDriver(hSCManager, DriverPath))	{
+			stopDriver(hSCManager);
+			rCode = removeDriver(hSCManager);
 		}
 		break;
 	case OLS_DRIVER_SYSTEM_INSTALL:
-		if (isSystemInstallDriver(hSCManager, DriverId, DriverPath))
+		if (isSystemInstallDriver(hSCManager, DriverPath)) {
 			rCode = TRUE;
-		else
-		{
-			if (!openDriver())
-			{
-				stopDriver(hSCManager, DriverId);
-				removeDriver(hSCManager, DriverId);
-				if (installDriver(hSCManager, DriverId, DriverPath))
-					startDriver(hSCManager, DriverId);
+		} else	{
+			if (!openDriver()) {
+				stopDriver(hSCManager);
+				removeDriver(hSCManager);
+				if (installDriver(hSCManager, DriverPath)) {
+					startDriver(hSCManager);
+				}
 				openDriver();
 			}
 
 			hService = OpenService(hSCManager, DriverId, SERVICE_ALL_ACCESS);
-			if (hService != NULL)
-			{
+			if (hService != NULL) {
 				rCode = ChangeServiceConfig(
 					hService,
 					SERVICE_KERNEL_DRIVER,
@@ -75,18 +107,17 @@ BOOL DriverManager::manage(LPCTSTR DriverId, LPCTSTR DriverPath, USHORT Function
 		}
 		break;
 	case OLS_DRIVER_SYSTEM_UNINSTALL:
-		if (!isSystemInstallDriver(hSCManager, DriverId, DriverPath))
+		if (!isSystemInstallDriver(hSCManager, DriverPath)) {
 			rCode = TRUE;
-		else
-		{
-			if (gHandle != INVALID_HANDLE_VALUE)
-			{
+		} else {
+			if (gHandle != INVALID_HANDLE_VALUE) {
 				CloseHandle(gHandle);
 				gHandle = INVALID_HANDLE_VALUE;
 			}
 
-			if (stopDriver(hSCManager, DriverId))
-				rCode = removeDriver(hSCManager, DriverId);
+			if (stopDriver(hSCManager)) {
+				rCode = removeDriver(hSCManager);
+			}
 		}
 		break;
 	default:
@@ -94,14 +125,13 @@ BOOL DriverManager::manage(LPCTSTR DriverId, LPCTSTR DriverPath, USHORT Function
 		break;
 	}
 
-	if (hSCManager != NULL)
+	if (hSCManager != NULL) {
 		CloseServiceHandle(hSCManager);
-
+	}
 	return rCode;
 }
 
-BOOL DriverManager::installDriver(SC_HANDLE hSCManager, LPCTSTR DriverId, LPCTSTR DriverPath)
-{
+BOOL DriverManager::installDriver(SC_HANDLE hSCManager, LPCTSTR DriverPath) {
 	SC_HANDLE hService = NULL;
 	BOOL rCode = FALSE;
 	DWORD error = NO_ERROR;
@@ -121,14 +151,12 @@ BOOL DriverManager::installDriver(SC_HANDLE hSCManager, LPCTSTR DriverId, LPCTST
 		NULL,
 		NULL);
 
-	if (hService == NULL)
-	{
+	if (hService == NULL) {
 		error = GetLastError();
-		if (error == ERROR_SERVICE_EXISTS)
+		if (error == ERROR_SERVICE_EXISTS) {
 			rCode = TRUE;
-	}
-	else
-	{
+		}
+	} else {
 		rCode = TRUE;
 		CloseServiceHandle(hService);
 	}
@@ -136,16 +164,14 @@ BOOL DriverManager::installDriver(SC_HANDLE hSCManager, LPCTSTR DriverId, LPCTST
 	return rCode;
 }
 
-BOOL DriverManager::removeDriver(SC_HANDLE hSCManager, LPCTSTR DriverId)
-{
+BOOL DriverManager::removeDriver(SC_HANDLE hSCManager) {
 	SC_HANDLE hService = NULL;
 	BOOL rCode = FALSE;
 
 	hService = OpenService(hSCManager, DriverId, SERVICE_ALL_ACCESS);
-	if (hService == NULL)
+	if (hService == NULL) {
 		rCode = TRUE;
-	else
-	{
+	} else {
 		rCode = DeleteService(hService);
 		CloseServiceHandle(hService);
 	}
@@ -153,37 +179,34 @@ BOOL DriverManager::removeDriver(SC_HANDLE hSCManager, LPCTSTR DriverId)
 	return rCode;
 }
 
-BOOL DriverManager::startDriver(SC_HANDLE hSCManager, LPCTSTR DriverId)
-{
+BOOL DriverManager::startDriver(SC_HANDLE hSCManager) {
 	SC_HANDLE hService = NULL;
 	BOOL rCode = FALSE;
 	DWORD error = NO_ERROR;
 
 	hService = OpenService(hSCManager, DriverId, SERVICE_ALL_ACCESS);
-	if (hService != NULL)
-		if (!StartService(hService, 0, NULL))
-		{
+	if (hService != NULL) {
+		if (!StartService(hService, 0, NULL)) {
 			error = GetLastError();
-			if (error == ERROR_SERVICE_ALREADY_RUNNING)
+			if (error == ERROR_SERVICE_ALREADY_RUNNING) {
 				rCode = TRUE;
-		}
-		else
+			}
+		} else {
 			rCode = TRUE;
-	CloseServiceHandle(hService);
-
+		}
+		CloseServiceHandle(hService);
+	}
 	return rCode;
 }
 
-BOOL DriverManager::stopDriver(SC_HANDLE hSCManager, LPCTSTR DriverId)
-{
+BOOL DriverManager::stopDriver(SC_HANDLE hSCManager) {
 	SC_HANDLE hService = NULL;
 	BOOL rCode = FALSE;
 	SERVICE_STATUS serviceStatus;
 	DWORD error = NO_ERROR;
 
 	hService = OpenService(hSCManager, DriverId, SERVICE_ALL_ACCESS);
-	if (hService != NULL)
-	{
+	if (hService != NULL) {
 		rCode = ControlService(hService, SERVICE_CONTROL_STOP, &serviceStatus);
 		error = GetLastError();
 		CloseServiceHandle(hService);
@@ -192,22 +215,21 @@ BOOL DriverManager::stopDriver(SC_HANDLE hSCManager, LPCTSTR DriverId)
 	return rCode;
 }
 
-BOOL DriverManager::isSystemInstallDriver(SC_HANDLE hSCManager, LPCTSTR DriverId, LPCTSTR DriverPath)
-{
+BOOL DriverManager::isSystemInstallDriver(SC_HANDLE hSCManager, LPCTSTR DriverPath) {
 	SC_HANDLE hService = NULL;
 	BOOL rCode = FALSE;
 	DWORD dwSize;
 	LPQUERY_SERVICE_CONFIG lpServiceConfig;
 
 	hService = OpenService(hSCManager, DriverId, SERVICE_ALL_ACCESS);
-	if (hService != NULL)
-	{
+	if (hService != NULL) {
 		QueryServiceConfig(hService, NULL, 0, &dwSize);
 		lpServiceConfig = (LPQUERY_SERVICE_CONFIG)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize);
 		QueryServiceConfig(hService, lpServiceConfig, dwSize, &dwSize);
 
-		if (lpServiceConfig->dwStartType == SERVICE_AUTO_START)
+		if (lpServiceConfig != nullptr && lpServiceConfig->dwStartType == SERVICE_AUTO_START) {
 			rCode = TRUE;
+		}
 
 		CloseServiceHandle(hService);
 		HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, lpServiceConfig);
@@ -216,10 +238,12 @@ BOOL DriverManager::isSystemInstallDriver(SC_HANDLE hSCManager, LPCTSTR DriverId
 	return rCode;
 }
 
-BOOL DriverManager::openDriver()
-{
+BOOL DriverManager::openDriver() {
+	std::wstring DriverId_(DriverId);
+	std::wstring DriverId__ = L"\\\\.\\" + DriverId_;
+
 	gHandle = CreateFile(
-		_T("\\\\.\\") OLS_DRIVER_ID,
+		DriverId__.c_str(),
 		GENERIC_READ | GENERIC_WRITE,
 		0,
 		NULL,
@@ -227,35 +251,33 @@ BOOL DriverManager::openDriver()
 		FILE_ATTRIBUTE_NORMAL,
 		NULL);
 
-	if (gHandle == INVALID_HANDLE_VALUE)
+	if (gHandle == INVALID_HANDLE_VALUE) {
 		return FALSE;
+	}
 
 	return TRUE;
 }
 
-BOOL WINAPI Driver::initialize()
-{
-	if (gInitDll == FALSE)
-	{
-		if (driverFileExistence() == OLS_DLL_NO_ERROR)
-		{
-			for (int i = 0; i < 4; i++)
-			{
-				if (openDriver())
-				{
+WINAPI Driver::Driver(LPCTSTR DriverId, LPCTSTR DriverFileName) : DriverManager(DriverId), driverFileExist(), gDriverPath() {
+	_tcscpy_s(gDriverFileName, MAX_PATH, DriverFileName);
+}
+
+BOOL WINAPI Driver::initialize() {
+	if (gInitDll == FALSE) {
+		if (driverFileExistence() == OLS_DLL_NO_ERROR) {
+			for (int i = 0; i < 4; i++)	{
+				if (openDriver()) {
 					gDllStatus = OLS_DLL_NO_ERROR;
 					break;
 				}
 
-				manage(OLS_DRIVER_ID, gDriverPath, OLS_DRIVER_REMOVE);
-				if (!manage(OLS_DRIVER_ID, gDriverPath, OLS_DRIVER_INSTALL))
-				{
+				manage(gDriverPath, OLS_DRIVER_REMOVE);
+				if (!manage(gDriverPath, OLS_DRIVER_INSTALL)) {
 					gDllStatus = OLS_DLL_DRIVER_NOT_LOADED;
 					continue;
 				}
 
-				if (openDriver())
-				{
+				if (openDriver()) {
 					gDllStatus = OLS_DLL_NO_ERROR;
 					break;
 				}
@@ -269,32 +291,14 @@ BOOL WINAPI Driver::initialize()
 	return gDllStatus == OLS_DLL_NO_ERROR;
 }
 
-VOID WINAPI Driver::deinitialize()
-{
+VOID WINAPI Driver::deinitialize() {
 	BOOL isHandel = gHandle != INVALID_HANDLE_VALUE;
-	if (gInitDll == TRUE && isHandel)
-	{
-		DWORD length;
-		DWORD refCount = 0;
-		DWORD result = DeviceIoControl(
-			gHandle,
-			IOCTL_OLS_GET_REFCOUNT,
-			NULL,
-			0,
-			&refCount,
-			sizeof(refCount),
-			&length,
-			NULL);
+	if (gInitDll == TRUE && isHandel) {
+		CloseHandle(gHandle);
+		gHandle = INVALID_HANDLE_VALUE;
+		manage(gDriverPath, OLS_DRIVER_REMOVE);
 
-		if (refCount == 1)
-		{
-			CloseHandle(gHandle);
-			gHandle = INVALID_HANDLE_VALUE;
-			manage(OLS_DRIVER_ID, gDriverPath, OLS_DRIVER_REMOVE);
-		}
-
-		if (isHandel)
-		{
+		if (isHandel) {
 			CloseHandle(gHandle);
 			gHandle = INVALID_HANDLE_VALUE;
 		}
@@ -302,9 +306,57 @@ VOID WINAPI Driver::deinitialize()
 	}
 }
 
-BYTE WINAPI Driver::readIoPortByte(BYTE port)
-{
-	BYTE value = 0;
+BYTE Driver::driverFileExistence() {
+	TCHAR* ptr;
+	TCHAR root[4];
+	TCHAR dir[MAX_PATH];
+	HANDLE hFile;
+	WIN32_FIND_DATA findData;
+
+	if (gDriverType == OLS_DRIVER_TYPE_UNKNOWN && IsWindowsVersionOrGreater(5, 0, 0)) {
+		gDllStatus = OLS_DLL_NO_ERROR;
+		gDriverType = OLS_DRIVER_TYPE_WIN_NT_X64;
+//#ifndef _WIN64
+//		BOOL wow64 = FALSE;
+//		IsWow64Process(GetCurrentProcess(), &wow64);
+//		if (!wow64)
+//		{
+//			gDriverType = OLS_DRIVER_TYPE_WIN_NT;
+//			_tcscpy_s(gDriverFileName, MAX_PATH, OLS_DRIVER_FILE_NAME_WIN_NT);
+//		}
+//#endif
+	}
+
+	GetModuleFileName(NULL, dir, MAX_PATH);
+	if ((ptr = _tcsrchr(dir, '\\')) != NULL) {
+		*ptr = '\0';
+	}
+	wsprintf(gDriverPath, _T("%s\\%s"), dir, gDriverFileName);
+
+	// Check file existence
+	hFile = FindFirstFile(gDriverPath, &findData);
+	if (hFile != INVALID_HANDLE_VALUE) {
+		FindClose(hFile);
+	} else {
+		return OLS_DLL_DRIVER_NOT_FOUND;
+	}
+
+	// Check file is not on network location
+	root[0] = gDriverPath[0];
+	root[1] = ':';
+	root[2] = '\\';
+	root[3] = '\0';
+	if (root[0] == '\\' || GetDriveType((LPCTSTR)root) == DRIVE_REMOTE) {
+		return OLS_DLL_DRIVER_NOT_LOADED_ON_NETWORK;
+	}
+	driverFileExist = TRUE;
+	return OLS_DLL_NO_ERROR;
+}
+
+WINAPI WinRing0::WinRing0(LPCTSTR DriverId, LPCTSTR DriverFileName) : Driver(DriverId, DriverFileName), bResult(0), bytesReturned(0)
+{}
+
+VOID WINAPI WinRing0::readIoPortByte(BYTE& port, BYTE& value) {
 	bResult = DeviceIoControl(
 		gHandle,
 		IOCTL_OLS_READ_IO_PORT_BYTE,
@@ -314,15 +366,10 @@ BYTE WINAPI Driver::readIoPortByte(BYTE port)
 		sizeof(value),
 		&bytesReturned,
 		NULL);
-
-	return value;
 }
 
-VOID WINAPI Driver::writeIoPortByte(BYTE port, BYTE value)
-{
-	OLS_WRITE_IO_PORT_INPUT inBuf;
-	inBuf.PortNumber = port;
-	inBuf.CharData = value;
+VOID WINAPI WinRing0::writeIoPortByte(BYTE& port, BYTE& value) {
+	OLS_WRITE_IO_PORT_INPUT inBuf = {port, value};
 	bResult = DeviceIoControl(
 		gHandle,
 		IOCTL_OLS_WRITE_IO_PORT_BYTE,
@@ -334,50 +381,38 @@ VOID WINAPI Driver::writeIoPortByte(BYTE port, BYTE value)
 		NULL);
 }
 
-BYTE Driver::driverFileExistence()
-{
-	TCHAR *ptr;
-	TCHAR root[4];
-	TCHAR dir[MAX_PATH];
-	HANDLE hFile;
-	WIN32_FIND_DATA findData;
+WINAPI RwDrv::RwDrv(LPCTSTR DriverId, LPCTSTR DriverFileName) : Driver(DriverId, DriverFileName), bResult(0), bytesReturned(0)
+{}
 
-	if (gDriverType == OLS_DRIVER_TYPE_UNKNOWN && IsWindowsVersionOrGreater(5, 0, 0))
-	{
-		gDllStatus = OLS_DLL_NO_ERROR;
-		gDriverType = OLS_DRIVER_TYPE_WIN_NT_X64;
-		_tcscpy_s(gDriverFileName, MAX_PATH, OLS_DRIVER_FILE_NAME_WIN_NT_X64);
-#ifndef _WIN64
-		BOOL wow64 = FALSE;
-		IsWow64Process(GetCurrentProcess(), &wow64);
-		if (!wow64)
-		{
-			gDriverType = OLS_DRIVER_TYPE_WIN_NT;
-			_tcscpy_s(gDriverFileName, MAX_PATH, OLS_DRIVER_FILE_NAME_WIN_NT);
-		}
-#endif
-	}
+VOID WINAPI RwDrv::readIoPortByte(BYTE& port, BYTE& value) {
+	UCHAR Request[0x100];
+	ZeroMemory(&Request, sizeof(Request));
 
-	GetModuleFileName(NULL, dir, MAX_PATH);
-	if ((ptr = _tcsrchr(dir, '\\')) != NULL)
-		*ptr = '\0';
-	wsprintf(gDriverPath, _T("%s\\%s"), dir, gDriverFileName);
+	*(PWORD)(Request + 0x00) = port;
 
-	// Check file existence
-	hFile = FindFirstFile(gDriverPath, &findData);
-	if (hFile != INVALID_HANDLE_VALUE)
-		FindClose(hFile);
-	else
-		return OLS_DLL_DRIVER_NOT_FOUND;
+	// send request to the driver
+	bResult = DeviceIoControl(
+		gHandle, 0x222810,
+		&Request, sizeof(Request), &Request, sizeof(Request),
+		&bytesReturned, NULL
+	);
 
-	// Check file is not on network location
-	root[0] = gDriverPath[0];
-	root[1] = ':';
-	root[2] = '\\';
-	root[3] = '\0';
-	if (root[0] == '\\' || GetDriveType((LPCTSTR)root) == DRIVE_REMOTE)
-		return OLS_DLL_DRIVER_NOT_LOADED_ON_NETWORK;
-
-	driverFileExist = TRUE;
-	return OLS_DLL_NO_ERROR;
+	value = *(PDWORD64)(Request + 0x04);
 }
+
+VOID WINAPI RwDrv::writeIoPortByte(BYTE& port, BYTE& value) {
+	UCHAR Request[0x100];
+	ZeroMemory(&Request, sizeof(Request));
+
+	*(PWORD)(Request + 0x00) = port;
+	*(PDWORD64)(Request + 0x04) = value;
+
+	// send request to the driver
+	bResult = DeviceIoControl(
+		gHandle, 0x222814,
+		&Request, sizeof(Request), &Request, sizeof(Request),
+		&bytesReturned, NULL
+	);
+}
+
+
