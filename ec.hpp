@@ -46,6 +46,7 @@ constexpr BYTE WR_EC = 0x81;   // Write Embedded Controller
 
 typedef std::map<BYTE, BYTE> EC_DUMP;
 
+
 /**
  * Implementation of ACPI embedded controller specification to access the EC's RAM
  * @see https://uefi.org/specs/ACPI/6.4/12_ACPI_Embedded_Controller_Interface_Specification/ACPI_Embedded_Controller_Interface_Specification.html

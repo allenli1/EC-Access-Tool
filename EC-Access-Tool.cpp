@@ -25,8 +25,10 @@ int main(int argc, char** argv) {
     ArgumentParser arg_parser = ArgumentParser(argc, argv);
     const auto& parsed_commands = arg_parser.getParsedCommandsRef();
     auto driver_type = arg_parser.getDriverType();
+    auto arg_ec_sc = arg_parser.getScPort();
+    auto arg_ec_data = arg_parser.getDataPort();
 
-    EmbeddedController ec = EmbeddedController(EC_SC, EC_DATA, LITTLE_ENDIAN, 5, 100, driver_type);
+    EmbeddedController ec = EmbeddedController(arg_ec_sc, arg_ec_data, LITTLE_ENDIAN, 100, 100, driver_type);
     if (!ec.driverLoaded) {
         std::cerr << std::endl
             << "Error: Couldn't load Driver" << std::endl
@@ -54,11 +56,11 @@ int main(int argc, char** argv) {
                 //std::cout << "read: " << (int)std::get<1>(command) << std::endl; //Debug prints
                 uint8_t read_address = std::get<1>(command);
                 if (ec.readByte(read_address, read_value) == TRUE) {// Read value of register 
-                    std::cout << " 0x" << std::setfill('0') << std::setw(2) << std::right << std::hex << (INT)read_value;
+                    std::cout << "0x" << std::setfill('0') << std::setw(2) << std::right << std::hex << (INT)read_value;
                     last_read_value = read_value;
                 }
                 else {
-                    std::cout << " 0xXX";
+                    std::cout << "0xXX";
                 }
             }
         }

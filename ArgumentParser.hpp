@@ -33,8 +33,12 @@ class ArgumentParser {
 	 void showError(ErrorType error, std::string arg) const;
      const std::vector<std::tuple<char, uint8_t, uint8_t>>& getParsedCommandsRef() const;
 	 Driver::DriverType getDriverType() const;
+	 BYTE getDataPort();
+	 BYTE getScPort();
 
  private:
 	 Driver::DriverType mDriverType;
 	 std::vector<std::tuple<char, uint8_t, uint8_t>> mParsedCommands;
+	 BYTE ARG_EC_DATA;
+	 BYTE ARG_EC_SC;
 };

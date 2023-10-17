@@ -17,6 +17,7 @@
 
 #include "ArgumentParser.hpp"
 
+
 ArgumentParser::ArgumentParser(int argc, char** argv) : mDriverType(Driver::DriverType::eUnInit), mParsedCommands() {
     if (argc < 2) {
         showError(ErrorType::eShowUsage, "");
@@ -46,6 +47,32 @@ ArgumentParser::ArgumentParser(int argc, char** argv) : mDriverType(Driver::Driv
             if (stringToInt(addr_arg, read_address)) {
                 mParsedCommands.push_back(std::tuple<char, uint8_t, uint8_t>('r', read_address, 0));
             } else {
+                showError(ErrorType::eShowUsage, "");
+                exit(1);
+            }
+            i += 1;
+            remainingArgs -= 1;
+        } else if (arg == "-sc" && remainingArgs != 1) {
+            //std::cout << "read: " << argv[i + 1] << " remainingArgs:" << remainingArgs << std::endl; //Debug prints
+            std::string addr_arg = argv[i + 1];
+            uint8_t sc_address = 0;
+            if (stringToInt(addr_arg, sc_address)) {
+                ARG_EC_SC = sc_address;
+            }
+            else {
+                showError(ErrorType::eShowUsage, "");
+                exit(1);
+            }
+            i += 1;
+            remainingArgs -= 1;
+        } else if (arg == "-data" && remainingArgs != 1) {
+            //std::cout << "read: " << argv[i + 1] << " remainingArgs:" << remainingArgs << std::endl; //Debug prints
+            std::string addr_arg = argv[i + 1];
+            uint8_t data_address = 0;
+            if (stringToInt(addr_arg, data_address)) {
+                ARG_EC_DATA = data_address;
+            }
+            else {
                 showError(ErrorType::eShowUsage, "");
                 exit(1);
             }
@@ -160,4 +187,12 @@ Driver::DriverType ArgumentParser::getDriverType() const {
 
 const std::vector<std::tuple<char, uint8_t, uint8_t>>& ArgumentParser::getParsedCommandsRef() const {
     return mParsedCommands;
+}
+
+BYTE ArgumentParser::getDataPort() {
+    return ARG_EC_DATA;
+}
+
+BYTE ArgumentParser::getScPort() {
+    return ARG_EC_SC;
 }
