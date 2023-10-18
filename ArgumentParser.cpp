@@ -134,6 +134,8 @@ void ArgumentParser::showError(ErrorType error, std::string arg) const {
             << "\t-[rwdrv|winring0]     Use RwDrv.sys or WinRing0 as the driver to access EC" << std::endl
             << "\t-w  [address] [value] Write to a register with 'address' and 'value'" << std::endl
             << "\t-r  [address]         Read from a register with 'address'           " << std::endl
+            << "\t-data  [port]         Read from a specified data port (0x62)           " << std::endl
+            << "\t-sc  [port]           Read from a specified sc port (0x66)          " << std::endl
             << std::endl
             << "Example Usage (N operations at a time, N can be any natural number):" << std::endl
             << "\tEC-Access-Tool -winring0 -r RegAddr-1 -r RegAddr-2 -w RegAddr-3 WriteVal-3 ... -[w/r] RegAddr-N WriteVal-N " << std::endl
