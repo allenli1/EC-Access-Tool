@@ -1,0 +1,11 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(531,5): warning MSB8028: The intermediate directory (x64\Release\) contains files shared from another project (Project1.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  ArgumentParser.cpp
+  driver.cpp
+C:\GitHub\EC-Access-Tool\driver.cpp(400,10): warning C4244: '=': conversion from 'unsigned __int64' to 'BYTE', possible loss of data
+  EC-Access-Tool.cpp
+  ec.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 292 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Project1.vcxproj -> C:\GitHub\EC-Access-Tool\VISUAL_STUDIO\Project1\x64\Release\ec_fan_tool.exe
